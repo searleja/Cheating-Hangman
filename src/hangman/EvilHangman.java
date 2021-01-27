@@ -16,13 +16,9 @@ public class EvilHangman {
 
         EvilHangmanGame game = new EvilHangmanGame();
         game.startGame(file, wordLength);
+        game.play(numGuesses);
 
-        Scanner guess = new Scanner(System.in);
-        int counter = 0;
-        while (counter < numGuesses) {
-            char next = guess.next().charAt(0);
-            game.makeGuess(next);
-        }
+
     }
 
 }
