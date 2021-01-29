@@ -16,8 +16,7 @@ public class EvilHangman {
 
         EvilHangmanGame game = new EvilHangmanGame();
         game.startGame(file, wordLength);
-        game.play(numGuesses);
-
+        game.play(numGuesses, wordLength);
 
     }
 

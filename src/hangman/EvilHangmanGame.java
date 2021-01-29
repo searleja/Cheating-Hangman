@@ -9,7 +9,7 @@ public class EvilHangmanGame implements IEvilHangmanGame {
     private SortedSet<Character> guesses;
     private Set<String> newDictionary;
     private Map<String, Set<String>> currentWords;
-    private String currentOutput;
+    private String currentOutput = "";
 
 
     @Override
@@ -29,18 +29,60 @@ public class EvilHangmanGame implements IEvilHangmanGame {
         if (newDictionary.size() == 0) { throw new EmptyDictionaryException("No matching words"); }
     }
 
-    public void play(int guesses) {
-        int numGuesses = guesses;
+    public void play(int nguesses, int wordLength) {
+        int numGuesses = nguesses;
         Scanner guess = new Scanner(System.in);
-        int counter = 0;
-        while (counter < numGuesses && currentOutput.contains("-")) {
+        currentOutput = new String();
+        for (int i = 0; i < wordLength; i++) {
+            currentOutput += '-';
+        }
+        while (numGuesses > 0 && currentOutput.contains("-")) {
+            System.out.println("You have " + numGuesses + " guesses left");
+            System.out.print("Used letters: ");
+            for (char c : guesses) {
+                System.out.print(c + " ");
+            }
+            System.out.println("\nWord: " + currentOutput);
+            System.out.print("Enter guess: ");
+            String prevOutput = currentOutput;
             char next = guess.next().charAt(0);
+            boolean valid = true;
             try {
                 makeGuess(next);
             } catch (GuessAlreadyMadeException e) {
+                valid = false;
                 System.out.println(e);
             }
+
+            updateOutput(next);
+
+            if (prevOutput.equals(currentOutput)) {
+                System.out.println("Sorry, there are no " + next + "'s");
+                if (valid) numGuesses--;
+            }
+            else {
+                int ctr = 0;
+                for (int i = 0; i < currentOutput.length(); i++) {
+                    if (currentOutput.charAt(i) == next) ctr++;
+                }
+                System.out.println("Yes, there is " + ctr + ' ' + next);
+            }
+            System.out.println();
         }
+        if (!currentOutput.contains("-")) System.out.println("You Win!");
+        else System.out.println("You Lose!");
+        System.out.println("The word was: " + newDictionary.iterator().next());
+    }
+
+    private void updateOutput(char c) { //made a separate method as to not mess with unit tests
+        String s = newDictionary.iterator().next();
+        String temp = "";
+        for (int i = 0; i < s.length(); i++) {
+            if (currentOutput.charAt(i) != '-') temp += currentOutput.charAt(i);
+            else if (s.charAt(i) == c) temp += s.charAt(i);
+            else temp += '-';
+        }
+        currentOutput = temp;
     }
 
     @Override
@@ -48,6 +90,9 @@ public class EvilHangmanGame implements IEvilHangmanGame {
         guess = Character.toLowerCase(guess); //had to put here in order to pass tests
         if (guesses.contains(guess)) { //will put into GuessException
             throw new GuessAlreadyMadeException(guess + " has already been guessed!");
+        }
+        if (guess < 'a' || guess > 'z') {
+            throw new GuessAlreadyMadeException(guess + " is not a valid input!");
         }
         guesses.add(guess);
 
@@ -75,16 +120,12 @@ public class EvilHangmanGame implements IEvilHangmanGame {
 
     private String getBestDictionary(char guess) { //returns the best pattern from the currentWords map
         int max = 0;
-        ArrayList<String> maxKeys = new ArrayList<String>(); //used arraylist just in case there are more than one of the max
         String key = "";
         boolean swap = false;
         for (String currentKey : currentWords.keySet()) {
             swap = false;
             if (currentWords.get(currentKey).size() > max) {
-                max = currentWords.get(currentKey).size();
-                key = currentKey;
-                maxKeys = new ArrayList<String>(); //reset
-                maxKeys.add(currentKey);
+                swap = true;
             }
             else if (currentWords.get(currentKey).size() == max) {
                 int currentOccurrences = 0, occurrences = 0;
@@ -92,35 +133,21 @@ public class EvilHangmanGame implements IEvilHangmanGame {
                     if (key.charAt(i) == guess) occurrences++;
                     if (currentKey.charAt(i) == guess) currentOccurrences++;
                 }
-                if (currentOccurrences == 0) {
-                    swap = true;
+                if (currentOccurrences == 0) swap = true; //no instances of the guess
+                else if (currentOccurrences < occurrences) swap = true;
+                else if (currentOccurrences == occurrences) {
+                    int index = currentKey.length();
+                    while (currentKey.lastIndexOf(guess, index) == key.lastIndexOf(guess, index)) {
+                        if (currentKey.lastIndexOf(guess, index) > key.lastIndexOf(guess, index)) swap=true;
+                        else if (currentKey.lastIndexOf(guess, index) == key.lastIndexOf(guess, index)) index = key.lastIndexOf(guess, index) - 1;
+                    }
                 }
             }
-        }
-//working on this currently
-        /*if (swap) {
-            max = currentWords.get(currentKey).size();
-            key = currentKey;
-            maxKeys = new ArrayList<String>(); //reset
-            maxKeys.add(currentKey);
-        } */
-        if (maxKeys.size() == 1) return maxKeys.get(0);
-        else { //more than one pattern with same amount of words
-            int minOccurrences = maxKeys.get(0).length();
-            for (String current : maxKeys) {
-                int occurrences = 0;
-                for (int i = 0; i < current.length(); i++) {
-                    if (current.charAt(i) == guess) occurrences++;
-                }
-                if (occurrences == 0) {
-                    return current;
-                }
-                else if (occurrences < minOccurrences) {
-                    minOccurrences = occurrences;
-                }
+            if (swap) {
+                max = currentWords.get(currentKey).size();
+                key = currentKey;
             }
         }
-
         return key;
     }
 
